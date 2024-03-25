@@ -19,13 +19,18 @@ class Lesson:
 
     def setMiddleHourChet(self, countWeek):
         try:
-            self.middleHour = round(self.hourLesson/countWeek)
+            if random.random < 0.5:
+                self.middleHour = round(self.hourLesson/countWeek)+1
+            else:
+                self.middleHour = int(self.hourLesson / countWeek)
         except:
             self.middleHour = 0
     def setMiddleHourNeChet(self, countWeek):
         try:
-
-            self.middleHour = int(self.hourLesson / countWeek)
+            if random.random < 0.5:
+                self.middleHour = int(self.hourLesson / countWeek)
+            else:
+                self.middleHour = round(self.hourLesson / countWeek)
         except:
             self.middleHour = 0
 
