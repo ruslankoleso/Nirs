@@ -1,9 +1,14 @@
 from package.data_module.data.getData import Data
 from package.data_module.data.weekClass import weekShedule
+from package.modul_model.src.lessons import Lesson
+from package.modul_model.src.groups import Group
 import random
 import copy
 import math
 import openpyxl as op
+
+from package.modul_model.src.join_lesson import JoinLesson
+
 
 #Генерация особей
 
@@ -38,6 +43,22 @@ class Shedule:
 
     def setFit(self):
         self.fit = self.getFit()
+    def getFit_opt(self):
+        fit =0
+        fit += self.Fine_more_two_lesson()
+        print(fit,  'после ,контроль больше 2 пар')
+        fit += self.Calculat_penalties_weight()
+        print(fit, 'после  тяжесть занятий')
+        fit += self.Сalculation_Of_Fines_According_To_Wishes()
+        print(fit, 'после  пожелания')
+        fit += self.Calculat_penalties_count()
+        print(fit, 'после  неправильное количесвто пар')
+        fit += self.Calculat_smejn_lesson()
+        print(fit, 'после  смежные пары')
+        fit += self.Calculat_sovmestn_lessons()
+        print(fit, 'после  совместные пары')
+        fit += self.Calculat_nesovmest_lessons()
+        print(fit, 'после  несовместные  пары')
     def getFit(self):
         fit =0
         fit += self.Fine_more_two_lesson()
@@ -81,7 +102,7 @@ class Shedule:
                         if group1 == group2:
                             continue
                         if lesson == -1:
-                            continue
+                            break
                         lessonOtherGroup = self.hromosomaWithWeek[group2][indexweek].week[indexlesson]
                         if lessonOtherGroup == -1:
                             continue
@@ -91,7 +112,7 @@ class Shedule:
                                 group1smech = sovmest.idGroup1
                                 group2smech = sovmest.idGroup2
                                 if group1smech == group1 and group2smech == group2:
-                                    if lesson == sovmest.idLesson1 and self.hromosomaWithWeek[group2][indexweek].week[indexlesson] == sovmest.idLesson2:
+                                    if lesson == sovmest.idLesson1 and lessonOtherGroup == sovmest.idLesson2:
                                         flug = 1
                                         break
                             if not (flug):
@@ -161,19 +182,105 @@ class Shedule:
 
 
         return funcAll /self.data.allWeek
+    def gener_hromo_with_sovmest(self):
+        map_hromo_group_nechet = {}
+        map_hromo_group_chet = {}
+        for group in self.data.listGroups:
+            map_hromo_group_nechet[group.id] = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+            map_hromo_group_chet[group.id] = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,-1, -1, -1]
+        for sovmest in self.data.listJoinLesson:
+            sovmest: JoinLesson
+            group1 = sovmest.idGroup1
+            group2 = sovmest.idGroup2
+            lesson1 = sovmest.idLesson1
+            lesson2 = sovmest.idLesson2
+            #определяем объект группы по айди
+            for group in self.data.listGroups:
+                if group1 == group.id:
+                    group1 = group
+                    group1:Group
+                elif group2 == group.id:
+                    group2 = group
+                    group2: Group
+            # определяем объект занятия по айди
+            for lesson in group1.listLesson:
+                if lesson.id_lesson == lesson1:
+                    lesson1=lesson
+                    lesson1: Lesson
+            for lesson in group2.listLesson:
+                if lesson.id_lesson == lesson2:
+                    lesson2=lesson
+                    lesson2: Lesson
+            #Если уже когда-то совместный предмет с другой группой был расставлен, то дорасставляем для другой группы также
+            if lesson1.id_lesson in map_hromo_group_nechet[group1.id] and not lesson2.id_lesson in map_hromo_group_nechet[group2.id] :
+                for i in range(0,23):
+                    if lesson1.id_lesson == map_hromo_group_nechet[group1.id][i]:
+                        map_hromo_group_nechet[group2.id][i] = lesson2.id_lesson
+                        lesson2.hourLesson -= (self.data.nechet)
+                    if lesson1.id_lesson == map_hromo_group_chet[group1.id][i]:
+                        map_hromo_group_chet[group2.id][i] = lesson2.id_lesson
+                        lesson2.hourLesson -= (self.data.chet )
+                continue
 
+            elif lesson2.id_lesson in map_hromo_group_nechet[group2.id] and not lesson1.id_lesson in map_hromo_group_nechet[group1.id]:
+                for i in range(0,23):
+                    if lesson2.id_lesson == map_hromo_group_nechet[group2.id][i]:
+                        map_hromo_group_nechet[group1.id][i] = lesson1.id_lesson
+                        lesson1.hourLesson -= (self.data.nechet)
+                    if lesson2.id_lesson == map_hromo_group_chet[group2.id][i]:
+                        map_hromo_group_chet[group1.id][i] = lesson1.id_lesson
+                        lesson1.hourLesson -= (self.data.chet)
+                continue
+
+
+
+
+            count = max(lesson1.middleHour,lesson2.middleHour)
+            indices1 = [i for i, x in enumerate(map_hromo_group_nechet[group1.id]) if x == -1]
+            indices2 = [i for i, x in enumerate(map_hromo_group_nechet[group2.id]) if x == -1]
+
+            indices3 = [i for i, x in enumerate(map_hromo_group_chet[group1.id]) if x == -1]
+
+            indices4 = [i for i, x in enumerate(map_hromo_group_chet[group2.id]) if x == -1]
+
+            indices = list(set(indices2) & set(indices1) &set(indices3) & set(indices4))
+
+            index_lesson = random.sample(indices,count)
+            for index in index_lesson:
+                map_hromo_group_nechet[group1.id][index] = lesson1.id_lesson
+                map_hromo_group_nechet[group2.id][index] = lesson2.id_lesson
+            lesson1.hourLesson -= ( self.data.nechet *len(index_lesson))
+            lesson2.hourLesson -= (self.data.nechet * len(index_lesson))
+            #обновляем часы
+            lesson1.setMiddleHourChet(self.data.chet)
+            lesson2.setMiddleHourChet(self.data.chet)
+            count_chet = max(lesson1.middleHour,lesson2.middleHour)
+            #добавляем совместные пары в четные недели
+            if len(index_lesson) < count_chet:
+                new_indices =  [x for x in indices if x not in index_lesson]
+                index_lesson.extend(random.sample(new_indices, count_chet-len(index_lesson)))
+            if len(index_lesson) > count_chet:
+                index_lesson = index_lesson[:count_chet]
+            for index in index_lesson:
+                map_hromo_group_chet[group1.id][index] = lesson1.id_lesson
+                map_hromo_group_chet[group2.id][index] = lesson2.id_lesson
+            lesson1.hourLesson -= (self.data.chet * len(index_lesson))
+            lesson2.hourLesson -= (self.data.chet * len(index_lesson))
+        return  map_hromo_group_nechet, map_hromo_group_chet
     def Generation(self):
 
         allWeek = self.data.allWeek
 
-        allGroupGen = {}
+        allGroupGen = self.gener_hromo_with_sovmest()
+        allGroupGen_new = {}
         # сделали две недели
         for group in self.data.listGroups:
 
             hromoTwoWeek = []
-            hromoNechet = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+            hromoNechet = allGroupGen[0][group.id]
             for lesson in group.listLesson:
-
+                if lesson.id_lesson in self.data.dictJoinLesson[group.id]:
+                    continue
                 for countMiddleHourLesson in range(lesson.middleHour):
                     # if no place
                     if hromoNechet.count(-1) == 0:
@@ -188,14 +295,15 @@ class Shedule:
                     if lesson.hourLesson < self.data.nechet:
                         break
 
-            hromoChet = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+            hromoChet = allGroupGen[1][group.id]
 
             # добавили одну нечетную неделю
 
 
             for lesson in group.listLesson:
 
-
+                if lesson.id_lesson in self.data.dictJoinLesson[group.id]:
+                    continue
 
                 for countMiddleHourLesson in range(lesson.middleHour):
                     index = random.randint(0, 22)
@@ -226,76 +334,96 @@ class Shedule:
                 else:
                     hromoTwoWeek.append(copy.copy(hromoChet))
 
-            allGroupGen[group.id] = hromoTwoWeek
+            allGroupGen_new[group.id] = hromoTwoWeek
             # После расставления происходит до закидывание и до удаление пар, которые нарушают план занятий
         for group in self.data.listGroups:
             for lesson in group.listLesson:
+                #если пары совместные то удаляем их  конца
+                if lesson.id_lesson in self.data.dictJoinLesson[group.id]:
+                    if lesson.hourLesson < 0:
+                        indexWeek = 1
+                        while lesson.hourLesson < 0:
+
+                            try:
+                                last_idx = allGroupGen_new[group.id][-indexWeek][::-1].index(lesson.id_lesson)  # Находим индекс, начиная с конца списка
+                                last_idx = len(allGroupGen_new[group.id][-indexWeek]) - last_idx - 1  # Получаем истинный индекс в исходном списке
+                                allGroupGen_new[group.id][-indexWeek][last_idx] = -1
+                                lesson.hourLesson += 1
+                                indexWeek +=1
+                            except:
+                                indexWeek += 1
+                    continue
+
                 ListWeekDeleteLesson = []
                 while lesson.hourLesson < 0:
-                    if lesson.hourLesson > allWeek:
-                        print(lesson.hourLesson)
+
                     # выбираем наши парные свдоенные недели в которой будем удалять предмет
 
-                    indexWeek = random.randint(0, len(allGroupGen[group.id]) - 1)
-                    while  indexWeek in ListWeekDeleteLesson:
-                        indexWeek = random.randint(0, len(allGroupGen[group.id]) - 1)
+                    indexWeek = random.randint(0, len(allGroupGen_new[group.id]) - 1)
+
+                    while  (indexWeek in ListWeekDeleteLesson) and len(ListWeekDeleteLesson) != self.data.allWeek:
+                        indexWeek = random.randint(0, len(allGroupGen_new[group.id]) - 1)
+
                     ListWeekDeleteLesson.append(indexWeek)
                     # выбираем место, где значения предмета
-                    indexesDelete = [i for i, x in enumerate(allGroupGen[group.id][indexWeek]) if x == lesson.id_lesson]
+                    indexesDelete = [i for i, x in enumerate(allGroupGen_new[group.id][indexWeek]) if x == lesson.id_lesson]
+                    count_while = 0
                     while len(indexesDelete) == 0 :
-                        indexWeek = random.randint(0, len(allGroupGen[group.id]) - 1)
-                        indexesDelete = [i for i, x in enumerate(allGroupGen[group.id][indexWeek]) if x == lesson.id_lesson]
+                        indexWeek = random.randint(0, len(allGroupGen_new[group.id]) - 1)
+                        indexesDelete = [i for i, x in enumerate(allGroupGen_new[group.id][indexWeek]) if x == lesson.id_lesson]
+
                     lesson.hourLesson += 1
                     # выбираем какую пару удалим из расставленных пар конкретного предмета
                     index = random.choice(indexesDelete)
-                    allGroupGen[group.id][indexWeek][index] = -1
+                    allGroupGen_new[group.id][indexWeek][index] = -1
+        for group in self.data.listGroups:
+            for lesson in group.listLesson:
                 while lesson.hourLesson > 0:
-                    if lesson.hourLesson <= len(allGroupGen[group.id]):
+                    if lesson.hourLesson <= len(allGroupGen_new[group.id]):
 
                         # выбираем недели в которые будем дозакидывать предметы
-                        random_index = random.sample(range(len(allGroupGen[group.id])), lesson.hourLesson)
+                        random_index = random.sample(range(len(allGroupGen_new[group.id])), lesson.hourLesson)
                         for indexAddInWeek in random_index:
                             # в конкретной недели находим, где есть пустые пары
-                            indexesAdd = [i for i, x in enumerate(allGroupGen[group.id][indexAddInWeek]) if x == -1]
+                            indexesAdd = [i for i, x in enumerate(allGroupGen_new[group.id][indexAddInWeek]) if x == -1]
                             newIndexAddInWeek = -1
                             while len(indexesAdd) == 0:
                                 # если пустых пар нет, то ищим в другой недели
-                                newIndexAddInWeek = random.randint(0, len(allGroupGen[group.id]) -1)
+                                newIndexAddInWeek = random.randint(0, len(allGroupGen_new[group.id]) -1)
                                 indexesAdd = [i for i, x in
-                                              enumerate(allGroupGen[group.id][newIndexAddInWeek])
+                                              enumerate(allGroupGen_new[group.id][newIndexAddInWeek])
                                               if x == -1]
                                 # выбираем место из пустых пар и вставляем туда пару
 
                             if newIndexAddInWeek == -1:
                                 indexAdd = random.choice(indexesAdd)
-                                allGroupGen[group.id][indexAddInWeek][indexAdd] = lesson.id_lesson
+                                allGroupGen_new[group.id][indexAddInWeek][indexAdd] = lesson.id_lesson
                                 lesson.hourLesson -=1
                             else:
                                 indexAdd = random.choice(indexesAdd)
                                 try:
-                                    allGroupGen[group.id][newIndexAddInWeek][indexAdd] = lesson.id_lesson
+                                    allGroupGen_new[group.id][newIndexAddInWeek][indexAdd] = lesson.id_lesson
                                     lesson.hourLesson -= 1
                                 except:
                                     pass
 
-
-
-
-                    if lesson.hourLesson > len(allGroupGen[group.id]):
+                    if lesson.hourLesson > len(allGroupGen_new[group.id]):
 
                         # берем разницу между количеством часов и
-                        differenceHour = lesson.hourLesson - len(allGroupGen[group.id])
+                        differenceHour = lesson.hourLesson - len(allGroupGen_new[group.id])
 
-                        random_index = random.sample(range(len(allGroupGen[group.id])), differenceHour)
+                        random_index = random.sample(range(len(allGroupGen_new[group.id])), differenceHour)
                         for indexAddInWeek in random_index:
-                            indexesAdd = [i for i, x in enumerate(allGroupGen[group.id][indexAddInWeek]) if x == -1]
+                            indexesAdd = [i for i, x in enumerate(allGroupGen_new[group.id][indexAddInWeek]) if x == -1]
                             indexAdd = random.choice(indexesAdd)
-                            allGroupGen[group.id][indexAddInWeek][indexAdd] = lesson.id_lesson
+                            allGroupGen_new[group.id][indexAddInWeek][indexAdd] = lesson.id_lesson
                             lesson.hourLesson -= 1
         for group in self.data.listGroups:
             for lesson in group.listLesson:
                 lesson.hourLesson = self.data.dictLessonCount[group.id][lesson.id_lesson]
-        return allGroupGen
+                lesson.setMiddleHourNeChet(self.data.allWeek)
+
+        return allGroupGen_new
 
 
 
@@ -387,16 +515,12 @@ class Shedule:
                         continue
                     else:
                         mapCountInTwoWeek[lesson] = lessonCount
-                if len(mapCountLesson[group]) == 0:
 
-                    mapCountLesson[group] = mapCountInTwoWeek
-
-                else:
-                    for i in mapCountLesson[group]:
-                        try:
-                            mapCountLesson[group][i] += mapCountInTwoWeek[i]
-                        except:
-                            pass
+                for i in mapCountLesson[group]:
+                    try:
+                        mapCountLesson[group][i] += mapCountInTwoWeek[i]
+                    except:
+                        pass
         return mapCountLesson
     def Calculat_penalties_count(self):
         func = 0
@@ -412,13 +536,14 @@ class Shedule:
                 try:
                     if self.data.dictLessonCount[group][lessonId] != mapCountLesson[group][lessonId]:
                         func += 300/50
+                        print(lessonId)
                         print(self.data.dictLessonCount[group][lessonId], "____" , mapCountLesson[group][lessonId])
                         print(group)
                 except:
                     print(i)
         if func != 0 :
-            print(self.hromosoma)
-            print(self.mapDictLessonCount)
+            print(self.data.dictLessonCount)
+            print(mapCountLesson)
         return func /self.data.allWeek
 
     def podobie(self):

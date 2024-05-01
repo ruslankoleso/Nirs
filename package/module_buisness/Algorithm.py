@@ -13,13 +13,13 @@ import time
 class Algorithm:
     def __init__(self,allWeek=None):
         self.data = Data(allWeek=allWeek)
-        self.max_population = 10
+        self.max_population = 2000
 
         self.len_population = 450
         self.count = 0
         self.minFit = 200
         self.bestShedule = 0
-        self.Len_Hall_of_fame = 115
+        self.Len_Hall_of_fame = 500
         self.probabilityMutation = 0.6
         self.probabilityCross = 0.9
         self.minFit = []
@@ -32,6 +32,7 @@ class Algorithm:
         offspring = self.getOffspring()
         self.createPodobie(offspring)
         self.Hall_of_Fame = self.Inithial_Hall_of_fame(offspring=offspring)
+        self.Hall_of_Fame[0].getFit_opt()
         self.getMeanFit(offspring=offspring)
         self.getMinFitAndIndivid(offspring=offspring)
         countStop = 0
@@ -86,6 +87,7 @@ class Algorithm:
         # print(self.minInd.fit)
         min = self.rangeHall_of_fame()[0]
         optimalShedule = self.Hall_of_Fame[min]
+        optimalShedule.getFit_opt()
         optimalShedule:Shedule
         optimalShedule.printLection()
         print(self.Hall_of_Fame[min].fit)
@@ -197,7 +199,7 @@ class Algorithm:
         self.meanFit.append(mean/len(offspring))
 
     def getMinFitAndIndivid(self, offspring):
-        min = 100
+        min = 400
         minInd = 0
         self.Hall_of_Fame
         for ind in offspring:

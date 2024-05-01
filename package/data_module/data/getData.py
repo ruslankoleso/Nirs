@@ -3,6 +3,7 @@ from package.modul_model.src.groups import Group
 from package.modul_model.src.lessons import Lesson
 from package.modul_model.src.join_lesson import JoinLesson
 from package.modul_model.src.prepods_wishes import Wishes, Prepod
+from collections import defaultdict
 class Data:
   def __init__(self, allWeek = None):
     self.login = 'postgres'
@@ -27,8 +28,12 @@ class Data:
       self.cur.execute("select * from public.joint_couples ")
       joinLessons = self.cur.fetchall()
       listJoinLesson = []
+      dictJoinLesson = defaultdict(list)
       for lesson in joinLessons:
         listJoinLesson.append(JoinLesson(idGroup1=lesson[0],idGroup2=lesson[1], idLesson1=lesson[2], idLesson2=lesson[3], idJoin=lesson[4]))
+        dictJoinLesson[lesson[0]].append(lesson[2])
+        dictJoinLesson[lesson[1]].append(lesson[3])
+      self.dictJoinLesson = dictJoinLesson
       return listJoinLesson
   def getChetNechet(self):
       nechet = 0
@@ -89,7 +94,7 @@ class Data:
                                            isLection=lesson[4],
                                            )
                   para.setMiddleHourNeChet(self.allWeek)
-                  para.setMiddleHourChet(self.chet)
+
                   listLesson.append(para)
 
                   group.setListLesson(listLesson)
